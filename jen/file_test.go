@@ -1,6 +1,7 @@
 package jen
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -47,5 +48,47 @@ func TestValidAlias(t *testing.T) {
 			fmt.Printf("isValidAlias test failed %s should return %t but got %t\n", alias, expected, f.isValidAlias(alias))
 			t.Fail()
 		}
+	}
+}
+
+func TestFile_ImportComment(t *testing.T) {
+	file := NewFile("main")
+
+	file.Anon("fmt")
+	file.ImportComment("fmt", "anonymous fmt")
+
+	file.ImportName("io", "ioname")
+	file.ImportComment("io", "io comment")
+
+	file.ImportAlias("ioutil", "ioutilalias")
+	file.ImportComment("ioutil", "ioutil comment")
+
+	file.Func().Id("main").Params().Block(
+		Qual("io", "Pipe").Call(),
+		Qual("ioutil", "NopCloser").Call(Nil()),
+	)
+
+	var got bytes.Buffer
+	err := file.Render(&got)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := `package main
+
+import (
+	_ "fmt"              // anonymous fmt
+	"io"                 // io comment
+	ioutilalias "ioutil" // ioutil comment
+)
+
+func main() {
+	ioname.Pipe()
+	ioutilalias.NopCloser(nil)
+}
+`
+
+	if got.String() != expect {
+		t.Fatalf("Got: %v, expect: %v", got.String(), expect)
 	}
 }

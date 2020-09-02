@@ -87,6 +87,27 @@ func (f *File) Render(w io.Writer) error {
 	return nil
 }
 
+func (f *File) renderImportLine(path string, def importdef) string {
+	pathQuote := strconv.Quote(path)
+	comment := f.importComments[path]
+
+	if def.alias && path != "C" {
+		// "C" package should be rendered without alias even when used as an anonymous import
+		// (e.g. should never have an underscore).
+		if comment != "" {
+			return fmt.Sprintf("%s %s // %s", def.name, pathQuote, comment)
+		}
+
+		return fmt.Sprintf("%s %s", def.name, pathQuote)
+	}
+
+	if comment != "" {
+		return fmt.Sprintf("%s // %s", pathQuote, comment)
+	}
+
+	return fmt.Sprintf("%s", pathQuote)
+}
+
 func (f *File) renderImports(source io.Writer) error {
 
 	// Render the "C" import if it's been used in a `Qual`, `Anon` or if there's a preamble comment
@@ -107,16 +128,8 @@ func (f *File) renderImports(source io.Writer) error {
 
 	if len(filtered) == 1 {
 		for path, def := range filtered {
-			if def.alias && path != "C" {
-				// "C" package should be rendered without alias even when used as an anonymous import
-				// (e.g. should never have an underscore).
-				if _, err := fmt.Fprintf(source, "import %s %s\n\n", def.name, strconv.Quote(path)); err != nil {
-					return err
-				}
-			} else {
-				if _, err := fmt.Fprintf(source, "import %s\n\n", strconv.Quote(path)); err != nil {
-					return err
-				}
+			if _, err := fmt.Fprintf(source, "import %s\n\n", f.renderImportLine(path, def)); err != nil {
+				return err
 			}
 		}
 	} else if len(filtered) > 1 {
@@ -132,17 +145,8 @@ func (f *File) renderImports(source io.Writer) error {
 		sort.Strings(paths)
 		for _, path := range paths {
 			def := filtered[path]
-			if def.alias && path != "C" {
-				// "C" package should be rendered without alias even when used as an anonymous import
-				// (e.g. should never have an underscore).
-				if _, err := fmt.Fprintf(source, "%s %s\n", def.name, strconv.Quote(path)); err != nil {
-					return err
-				}
-
-			} else {
-				if _, err := fmt.Fprintf(source, "%s\n", strconv.Quote(path)); err != nil {
-					return err
-				}
+			if _, err := fmt.Fprintf(source, "%s\n", f.renderImportLine(path, def)); err != nil {
+				return err
 			}
 		}
 		if _, err := fmt.Fprint(source, ")\n\n"); err != nil {

@@ -15,9 +15,10 @@ func NewFile(packageName string) *File {
 		Group: &Group{
 			multi: true,
 		},
-		name:    packageName,
-		imports: map[string]importdef{},
-		hints:   map[string]importdef{},
+		name:           packageName,
+		imports:        map[string]importdef{},
+		hints:          map[string]importdef{},
+		importComments: map[string]string{},
 	}
 }
 
@@ -28,10 +29,11 @@ func NewFilePath(packagePath string) *File {
 		Group: &Group{
 			multi: true,
 		},
-		name:    guessAlias(packagePath),
-		path:    packagePath,
-		imports: map[string]importdef{},
-		hints:   map[string]importdef{},
+		name:           guessAlias(packagePath),
+		path:           packagePath,
+		imports:        map[string]importdef{},
+		hints:          map[string]importdef{},
+		importComments: map[string]string{},
 	}
 }
 
@@ -41,10 +43,11 @@ func NewFilePathName(packagePath, packageName string) *File {
 		Group: &Group{
 			multi: true,
 		},
-		name:    packageName,
-		path:    packagePath,
-		imports: map[string]importdef{},
-		hints:   map[string]importdef{},
+		name:           packageName,
+		path:           packagePath,
+		imports:        map[string]importdef{},
+		hints:          map[string]importdef{},
+		importComments: map[string]string{},
 	}
 }
 
@@ -52,13 +55,14 @@ func NewFilePathName(packagePath, packageName string) *File {
 // automaticaly by File.
 type File struct {
 	*Group
-	name        string
-	path        string
-	imports     map[string]importdef
-	hints       map[string]importdef
-	comments    []string
-	headers     []string
-	cgoPreamble []string
+	name           string
+	path           string
+	imports        map[string]importdef
+	importComments map[string]string
+	hints          map[string]importdef
+	comments       []string
+	headers        []string
+	cgoPreamble    []string
 	// If you're worried about generated package aliases conflicting with local variable names, you
 	// can set a prefix here. Package foo becomes {prefix}_foo.
 	PackagePrefix string
@@ -120,6 +124,11 @@ func (f *File) ImportNames(names map[string]string) {
 // period can be used to force a dot-import.
 func (f *File) ImportAlias(path, alias string) {
 	f.hints[path] = importdef{name: alias, alias: true}
+}
+
+// ImportComment adds the comment to the regular import or anonymous import
+func (f *File) ImportComment(path string, comment string) {
+	f.importComments[path] = comment
 }
 
 func (f *File) isLocal(path string) bool {
